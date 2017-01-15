@@ -1,0 +1,346 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+	<head >
+	<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+	
+	<meta name="generator" content="Hugo 0.19-DEV" />
+	
+	<title>hero &mdash; </title>
+	
+	<link rel="stylesheet" href="https://shiyanhui.github.io/css/alabaster.css" type="text/css" />
+	<link rel="stylesheet" href="https://shiyanhui.github.io/css/pygments.css" type="text/css" />
+
+	
+
+	<link rel="shortcut icon" href="https://shiyanhui.github.io/favicon.ico" type="image/x-icon"/>
+</head>
+
+	<body role="document">
+		<div class="document">
+			<div class="documentwrapper">
+				<div class="bodywrapper">
+					<div class="body" role="main">
+						
+	<h1>hero</h1>
+	
+	
+
+<p>Hero is a handy, fast and powerful go template engine, which pre-compiles the html templtes to go code.
+It has been used in production environment in <a href="http://bthub.io">bthub.io</a>.</p>
+
+<p><a href="https://godoc.org/github.com/shiyanhui/hero"><img src="https://godoc.org/github.com/shiyanhui/hero?status.svg" alt="GoDoc" /></a>
+<a href="https://goreportcard.com/report/github.com/shiyanhui/hero"><img src="https://goreportcard.com/badge/github.com/shiyanhui/hero" alt="Go Report Card" /></a></p>
+
+<ul>
+<li><a href="#features">Features</a></li>
+<li><a href="#install">Install</a></li>
+<li><a href="#usage">Usage</a></li>
+<li><a href="#quick-start">Quick Start</a></li>
+<li><a href="#template-syntax">Template Syntax</a></li>
+<li><a href="#license">License</a></li>
+</ul>
+
+<h2 id="features">Features</h2>
+
+<ul>
+<li>Easy to use.</li>
+<li>Powerful. template <code>Extend</code> and <code>Include</code> supported.</li>
+<li>High performance.</li>
+<li>Auto compiling when files change.</li>
+</ul>
+
+<h2 id="install">Install</h2>
+
+<pre><code>go get -u github.com/shiyanhui/hero
+</code></pre>
+
+<h2 id="usage">Usage</h2>
+
+<pre><code class="language-shell">hero [options]
+
+options:
+	- source:  the html template file or dir.
+	- dest:    generated golang files dir, it will be the same with source if not set.
+	- pkgname: the generated template package name, default is `template`.
+	- watch:   whether automic compile when the source files change.
+
+example:
+	hero -source=&quot;./&quot;
+	hero -source=&quot;$GOPATH/src/app/template&quot; -watch
+</code></pre>
+
+<h2 id="quick-start">Quick Start</h2>
+
+<p>Assume that we are going to render a user list <code>userlist.html</code>. <code>index.html</code>
+is the layout, and <code>user.html</code> is an item in the list.</p>
+
+<p>And assumes that they are all under <code>$GOPATH/src/app/template</code></p>
+
+<h3 id="index-html">index.html</h3>
+
+<pre><code class="language-html">&lt;!DOCTYPE html&gt;
+&lt;html&gt;
+    &lt;head&gt;
+        &lt;meta charset=&quot;utf-8&quot;&gt;
+    &lt;/head&gt;
+
+    &lt;body&gt;
+        &lt;%@ body { %&gt;
+        &lt;% } %&gt;
+    &lt;/body&gt;
+&lt;/html&gt;
+</code></pre>
+
+<h3 id="users-html">users.html</h3>
+
+<pre><code class="language-html">&lt;%: func UserList(userList []string) []byte %&gt;
+
+&lt;%~ &quot;index.html&quot; %&gt;
+
+&lt;%@ body { %&gt;
+    &lt;% for _, user := range userList { %&gt;
+        &lt;ul&gt;
+            &lt;%+ &quot;user.html&quot; %&gt;
+        &lt;/ul&gt;
+    &lt;% } %&gt;
+&lt;% } %&gt;
+</code></pre>
+
+<h3 id="user-html">user.html</h3>
+
+<pre><code class="language-html">&lt;li&gt;
+    &lt;%= user %&gt;
+&lt;/li&gt;
+</code></pre>
+
+<p>Then we compile the templates to go code.</p>
+
+<pre><code class="language-shell">hero -source=&quot;$GOPATH/src/app/template&quot;
+</code></pre>
+
+<p>We will get three new <code>.go</code> files under <code>$GOPATH/src/app/template</code>,
+i.e. <code>index.html.go</code>, <code>user.html.go</code> and <code>userlist.html.go</code>.</p>
+
+<p>Then we write a http server in <code>$GOPATH/src/app/main.go</code>.</p>
+
+<h3 id="main-go">main.go</h3>
+
+<pre><code class="language-go">package main
+
+import (
+	&quot;app/template&quot;
+	&quot;net/http&quot;
+)
+
+func main() {
+	http.HandleFunc(&quot;/users&quot;, func(w http.ResponseWriter, req *http.Request) {
+		var userList = []string {
+          	&quot;Alice&quot;,
+			&quot;Bob&quot;,
+			&quot;Tom&quot;,
+		}
+		w.Write(template.UserList(userList))
+	})
+
+	http.ListenAndServe(&quot;:8080&quot;, nil)
+}
+</code></pre>
+
+<p>At last, start the server and visit <code>http://localhost:8080/users</code> in your browser, we will get what we want!</p>
+
+<h2 id="template-syntax">Template syntax</h2>
+
+<p>There are only nine necessary kinds of statements, which are:</p>
+
+<ul>
+<li><p>Function Definition <code>&lt;%: func define %&gt;</code></p>
+
+<ul>
+<li>Function definition statement defines the function which represents a html file.</li>
+<li>The function defined should return one and only one parameter <code>[]byte</code>.</li>
+<li>Example:<code>&lt;%: func UserList(userList []string) []byte %&gt;</code> , which we have mentioned in quick start.</li>
+</ul></li>
+
+<li><p>Extend <code>&lt;%~ &quot;parent template&quot; %&gt;</code></p>
+
+<ul>
+<li>Extend statement states the parent template the current template extends.</li>
+<li>The parent template should be quoted with <code>&quot;&quot;</code>.</li>
+<li>Example: <code>&lt;%~ &quot;index.html&quot; &gt;</code>, which we have mentioned in quick start, too.</li>
+</ul></li>
+
+<li><p>Include <code>&lt;%+ &quot;sub template&quot; %&gt;</code></p>
+
+<ul>
+<li>Include statement includes a sub-template to the current template. It works like <code>#include</code> in <code>C++</code>.</li>
+<li>The sub-template should be quoted with <code>&quot;&quot;</code>.</li>
+<li>Example: <code>&lt;%+ &quot;user.html&quot; &gt;</code>, which we also have mentioned in quick start.</li>
+</ul></li>
+
+<li><p>Import <code>&lt;%! go code %&gt;</code></p>
+
+<ul>
+<li><p>Import statement imports the packages used in the defined function, and it also contains everything that is outside of the defined function.</p></li>
+
+<li><p>Import statement will NOT be inherited by child template.</p></li>
+
+<li><p>Example:</p></li>
+</ul>
+
+<pre><code class="language-go">&lt;%!
+    import (
+        &quot;fmt&quot;
+        &quot;strings&quot;
+    )
+
+    var a int
+
+    const b = &quot;hello, world&quot;
+
+    func Add(a, b int) int {
+        return a + b
+    }
+
+    type S struct {
+        Name string
+    }
+
+    func (s S) String() string {
+        return s.Name
+    }
+%&gt;
+</code></pre></li>
+
+<li><p>Block <code>&lt;%@ blockName { %&gt; &lt;% } %&gt;</code></p>
+
+<ul>
+<li><p>Block statement represents a block. Child template overwrites blocks to extend parent template.</p></li>
+
+<li><p>Example:</p></li>
+</ul>
+
+<pre><code class="language-html">&lt;!DOCTYPE html&gt;
+&lt;html&gt;
+    &lt;head&gt;
+        &lt;meta charset=&quot;utf-8&quot;&gt;
+    &lt;/head&gt;
+
+    &lt;body&gt;
+        &lt;%@ body { %&gt;
+        &lt;% } %&gt;
+    &lt;/body&gt;
+&lt;/html&gt;
+</code></pre></li>
+
+<li><p>Code <code>&lt;% go code %&gt;</code></p>
+
+<ul>
+<li><p>Code statement states all code inside the defined function. It&rsquo;s just go code.</p></li>
+
+<li><p>Example:</p></li>
+</ul>
+
+<pre><code class="language-go">&lt;% for _, user := userList { %&gt;
+    &lt;% if user != &quot;Alice&quot; { %&gt;
+        &lt;%= user %&gt;
+    &lt;% } %&gt;
+&lt;% } %&gt;
+
+&lt;%
+    a, b := 1, 2
+    c := Add(a, b)
+%&gt;
+</code></pre></li>
+
+<li><p>Raw Value <code>&lt;%= statement %&gt;</code></p>
+
+<ul>
+<li><p>Raw Value statement will convert the variable to string.</p></li>
+
+<li><p>Example:</p></li>
+</ul>
+
+<pre><code class="language-go">&lt;%== a %&gt;
+&lt;%== a + b %&gt;
+&lt;%== Add(a, b) %&gt;
+&lt;%== user.Name %&gt;
+</code></pre></li>
+
+<li><p>Escaped Value <code>&lt;%== statement %&gt;</code></p>
+
+<ul>
+<li><p>Escaped Value statement is similar with Raw Value statement, but after converting, it will escaped it with <code>html.EscapesString</code>.</p></li>
+
+<li><p>Example:</p></li>
+</ul>
+
+<pre><code class="language-go">&lt;%= a %&gt;
+&lt;%= a + b %&gt;
+&lt;%= Add(a, b) %&gt;
+&lt;%= user.Name %&gt;
+</code></pre></li>
+
+<li><p>Note <code>&lt;%# note %&gt;</code></p>
+
+<ul>
+<li>Note statement add notes to the template.</li>
+<li>It will not be added to the generated go source.</li>
+<li>Example: <code>&lt;# this is just a note example&gt;</code>.</li>
+</ul></li>
+</ul>
+
+<h2 id="license">License</h2>
+
+<p>Hero is licensed under the Apache License.</p>
+
+
+
+						
+					</div>
+				</div>
+			</div>
+			
+			<div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+	<div class="sphinxsidebarwrapper">
+		<p class="logo">
+			<a href="https://shiyanhui.github.io/">
+				
+				<h1 class="logo logo-name"></h1>
+			</a>
+		</p>
+		
+		
+
+		
+		
+
+		
+		<h3>Related Topics</h3>
+<ul>
+  <li><a href="https://shiyanhui.github.io/">Documentation overview</a><ul>
+  
+  
+</ul>
+
+	</div>
+</div>
+<div class="clearer"></div>
+</div>
+			<div class="footer">
+	&copy; 2017 
+	
+</div>
+
+
+
+
+			
+
+			
+
+			
+		</div>
+	</body>
+</html>
